@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors');
 const connectDB = require('./backend/config/db');
 
 // Load environment variables from .env file
@@ -15,7 +16,13 @@ connectDB();
 // Initialize Express App
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: true,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
+});
 
 // Store connected users for real-time messaging
 const userSockets = new Map();
@@ -94,6 +101,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Middleware to parse cookies
 app.use(cookieParser());
+
+// Enable CORS for frontend deployments (like Vercel)
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 
 // Serve static files (CSS, JS, Images) from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
