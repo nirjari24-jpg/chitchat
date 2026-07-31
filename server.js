@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const http = require('http');
+const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 const connectDB = require('./backend/config/db');
 
@@ -126,7 +127,55 @@ app.get('/profile', (req, res) => {
 });
 
 // Start the Server
+// Railway (and most PaaS providers) inject the PORT env var at runtime -
+// the app MUST listen on this port and bind to 0.0.0.0, not just the
+// fallback of 3000, otherwise health checks fail and the platform will
+// keep restarting the container.
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+const HOST = '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
+    console.log(`Server running on ${HOST}:${PORT}`);
 });
+
+// --- Error Handling & Graceful Shutdown ---
+// Without these handlers, unexpected errors or platform-issued SIGTERM
+// signals (e.g. during redeploys or health check failures) can crash the
+// process abruptly, causing repeated restart loops.
+
+server.on('error', (error) => {
+    console.error('Server error:', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Promise Rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+});
+
+const gracefulShutdown = (signal) => {
+    console.log(`${signal} received. Shutting down gracefully...`);
+
+    server.close(() => {
+        console.log('HTTP server closed.');
+
+        mongoose.connection.close(false).then(() => {
+            console.log('MongoDB connection closed.');
+            process.exit(0);
+        }).catch((error) => {
+            console.error('Error closing MongoDB connection:', error);
+            process.exit(1);
+        });
+    });
+
+    // Force shutdown if graceful close takes too long
+    setTimeout(() => {
+        console.error('Could not close connections in time, forcing shutdown.');
+        process.exit(1);
+    }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
