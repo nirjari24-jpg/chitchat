@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ChitChat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-layout">
+        
+        <!-- Left Sidebar: User List -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>ChitChat</h2>
+                <div>
+                    <a href="/profile" class="btn-secondary" style="padding: 5px 10px; font-size: 12px;">Profile</a>
+                    <button id="logoutBtn" class="btn-primary" style="padding: 5px 10px; font-size: 12px;">Logout</button>
+                </div>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search users...">
+            </div>
+            
+            <div id="userList" class="user-list">
+                <!-- Users will be populated here via JavaScript -->
+            </div>
+        </div>
+
+        <!-- Right Side: Chat Area -->
+        <div class="chat-area">
+            
+            <!-- Default Empty State -->
+            <div id="chatEmptyState" class="chat-empty-state">
+                <p>Select a user to start chatting</p>
+            </div>
+
+            <!-- Active Chat Interface (Hidden by default) -->
+            <div id="activeChat" style="display: none; height: 100%; flex-direction: column;">
+                
+                <div class="chat-header">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button id="mobileMenuBtn" class="mobile-menu-btn" style="display: none;">☰</button>
+                        <div style="width: 45px; height: 45px; border-radius: 50%; overflow: hidden; border: 2px solid var(--primary-red); background-color: var(--card-bg);">
+                            <img id="chatUserAvatar" src="" alt="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                        </div>
+                        <div>
+                            <h3 id="chatUserName" class="fancy-name" style="margin: 0; font-size: 20px;">Select a user</h3>
+                            <p id="chatUserRealName" style="margin: 0; font-size: 12px; opacity: 0.9; text-transform: capitalize;"></p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div id="chatOnlineStatus" style="display: none; align-items: center; gap: 5px; font-size: 14px;">
+                            <span style="width: 8px; height: 8px; background-color: var(--primary-red); box-shadow: 0 0 5px var(--primary-red); border-radius: 50%; display: inline-block;"></span> Online
+                        </div>
+                        <div id="callActionButtons" style="display: none; gap: 10px;">
+                            <button id="voiceCallBtn" class="btn-secondary" style="padding: 5px 10px; border-radius: 50%; font-size: 16px;" title="Voice Call">📞</button>
+                            <button id="videoCallBtn" class="btn-secondary" style="padding: 5px 10px; border-radius: 50%; font-size: 16px;" title="Video Call">📹</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="messagesContainer" class="messages-container">
+                    <!-- Messages will be populated here via JavaScript -->
+                </div>
+                
+                <div class="chat-input-area">
+                    <input type="text" id="messageInput" class="chat-input" placeholder="Type a message...">
+                    <button id="sendBtn" class="btn-primary">Send</button>
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div id="incomingCallModal" class="call-modal" style="display: none;">
+        <div class="call-modal-content">
+            <h3 id="incomingCallTitle">Incoming Call...</h3>
+            <p id="incomingCallerName" style="margin-bottom: 20px;">Someone is calling you</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="acceptCallBtn" class="btn-primary" style="background-color: #28a745; border-color: #28a745;">Accept</button>
+                <button id="rejectCallBtn" class="btn-primary" style="background-color: #dc3545; border-color: #dc3545;">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Call Modal -->
+    <div id="activeCallModal" class="active-call-modal" style="display: none;">
+        <div class="video-container">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <video id="localVideo" autoplay playsinline muted></video>
+        </div>
+        <div class="call-controls">
+            <button id="toggleAudioBtn" class="btn-secondary" style="border-radius: 50%; width: 40px; height: 40px; font-size: 16px;">🎤</button>
+            <button id="toggleVideoBtn" class="btn-secondary" style="border-radius: 50%; width: 40px; height: 40px; font-size: 16px;">📹</button>
+            <button id="endCallBtn" class="btn-primary" style="background-color: #dc3545; border-color: #dc3545; border-radius: 50%; width: 40px; height: 40px; font-size: 16px;">📞</button>
+        </div>
+    </div>
+
+    <!-- Link to JavaScript logic -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script src="/js/chat.js"></script>
+    <script src="/js/webrtc.js"></script>
+</body>
+</html>

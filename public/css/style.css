@@ -1,0 +1,280 @@
+/* Variables for easy theming */
+:root {
+    --primary-red: #FF2D55;
+    --dark-red: #B3001B;
+    --accent-red: #FF4D6D;
+    --bg-color: #0D0D0D;
+    --sidebar-bg: #0A0A0A;
+    --card-bg: #161616;
+    --border-color: #2A2A2A;
+    --text-main: #FFFFFF;
+    --text-muted: #B3B3B3;
+    --input-bg: #121212;
+    --hover-bg: #1A1A1A;
+}
+
+/* Reset basic elements */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+}
+
+/* Common Components */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.card {
+    background-color: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    padding: 30px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--primary-red);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    box-shadow: 0 4px 6px -1px rgba(255, 45, 85, 0.3);
+}
+
+.btn-primary:hover {
+    background-color: var(--dark-red);
+    transform: scale(1.02);
+    box-shadow: 0 6px 8px -1px rgba(255, 45, 85, 0.4);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--primary-red);
+    border: 1px solid var(--primary-red);
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-secondary:hover {
+    background-color: var(--hover-bg);
+    color: var(--accent-red);
+    transform: scale(1.02);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    outline: none;
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group input::placeholder {
+    color: var(--text-muted);
+}
+
+.form-group input:focus {
+    border-color: var(--primary-red);
+    box-shadow: 0 0 0 3px rgba(255, 45, 85, 0.2);
+}
+
+/* Auth Pages Container */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 500px;
+    background-color: #0D0D0D;
+    border: 1px solid #2A2A2A;
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-header h2 {
+    color: var(--primary-red);
+    font-size: 24px;
+}
+
+.auth-footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.auth-footer a {
+    color: var(--primary-red);
+    text-decoration: none;
+}
+
+/* Error Message */
+.error-msg {
+    color: #DC2626;
+    background-color: #FEE2E2;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    display: none; /* hidden by default */
+}
+
+/* Avatar Grid Styling */
+.avatar-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    margin-bottom: 5px;
+}
+
+.avatar-card {
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    background: #1A1A1A;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    padding: 6px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.avatar-img-wrapper {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent; /* Transparent background */
+}
+
+.avatar-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    transition: transform 0.2s ease;
+}
+
+/* Custom Avatar Adjustments for Visual Normalization */
+.avatar-ironman { transform: scale(1.2); }
+.avatar-thor { transform: scale(1.1); }
+.avatar-spiderman { transform: scale(1.12); }
+.avatar-loki { transform: scale(1.6) translateY(10%); }
+.avatar-spidergwen { transform: scale(1.4); }
+.avatar-ladythor { transform: scale(1.6) translateY(5%); }
+.avatar-blackwidow { transform: scale(1.2) translateY(-5%); }
+.avatar-doctorstrange { transform: scale(1.3) translateY(-10%); }
+.avatar-scarletwitch { transform: scale(1.3) translateY(-5%); }
+.avatar-groot { transform: scale(1.4) translateY(-15%); }
+
+.avatar-card:hover, .avatar-card:focus-visible {
+    transform: scale(1.08);
+    box-shadow: 0 0 15px rgba(230, 36, 41, 0.4);
+    outline: none;
+    border-color: rgba(230, 36, 41, 0.5);
+}
+
+.avatar-card.selected {
+    border-color: #E62429;
+    transform: scale(1.08);
+    box-shadow: 0 0 20px rgba(230, 36, 41, 0.6);
+}
+
+.check-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background-color: #E62429;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    border: 2px solid #0D0D0D;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--primary-red);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-red);
+}
