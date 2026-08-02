@@ -55,10 +55,11 @@ const loginUser = async (req, res) => {
             const token = generateToken(user._id);
 
             // Set token in HTTP-only cookie
+            const isProd = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
             res.cookie('jwt', token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                secure: isProd,
+                sameSite: isProd ? 'none' : 'lax',
                 maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
             });
 

@@ -1,22 +1,26 @@
 // This file works together with dashboard.js to handle chat functionality
 
-const socket = io();
+let socket = null;
+try {
+    if (typeof io === 'function') {
+        socket = io({ transports: ['websocket', 'polling'] });
+        
+        socket.on('connect', () => {
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            if (currentUser) {
+                socket.emit('register', currentUser._id);
+            }
+        });
 
-// Register the current user with the socket server
-socket.on('connect', () => {
-    const currentUser = JSON.parse(localStorage.getItem('user'));
-    if (currentUser) {
-        socket.emit('register', currentUser._id);
+        socket.on('newMessage', (newMsg) => {
+            if (selectedUserId && newMsg.sender === selectedUserId) {
+                appendMessage(newMsg);
+            }
+        });
     }
-});
-
-// Listen for incoming real-time messages
-socket.on('newMessage', (newMsg) => {
-    // If we are currently chatting with the sender, append it
-    if (selectedUserId && newMsg.sender === selectedUserId) {
-        appendMessage(newMsg);
-    }
-});
+} catch (err) {
+    console.warn('Socket.io not connected (using HTTP polling fallback):', err);
+}
 
 // Function called when a user is clicked in the sidebar
 const selectUser = (user) => {
@@ -46,6 +50,14 @@ const selectUser = (user) => {
     
     // Fetch previous messages for this user
     fetchMessages();
+
+    // Start auto-polling every 3 seconds for continuous updates on Vercel / serverless
+    if (window.chatPollingInterval) clearInterval(window.chatPollingInterval);
+    window.chatPollingInterval = setInterval(() => {
+        if (selectedUserId) {
+            fetchMessages(true);
+        }
+    }, 3000);
 };
 
 // Fetch messages for the selected user from API
@@ -193,11 +205,13 @@ const sendMessage = async () => {
             // Clear input box
             messageInput.value = '';
             
-            // Emit to server so it sends to receiver
-            socket.emit('sendMessage', {
-                receiverId: selectedUserId,
-                message: savedMessage
-            });
+            // Emit to server if socket is active
+            if (socket && typeof socket.emit === 'function') {
+                socket.emit('sendMessage', {
+                    receiverId: selectedUserId,
+                    message: savedMessage
+                });
+            }
             
             // Append to our own chat UI immediately
             appendMessage(savedMessage);

@@ -138,11 +138,20 @@ app.get('/profile', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'profile.html'));
 });
 
-// Start the Server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
+// Middleware to connect to DB on request if needed
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
 });
+
+// Start the Server (only when not running in Vercel serverless environment)
+if (!process.env.VERCEL) {
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
 
 // Export the Express API for Vercel
 module.exports = app;
+
