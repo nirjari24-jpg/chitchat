@@ -56,12 +56,6 @@ if (avatarGrid) {
             card.appendChild(badge);
             
             selectedAvatar = filename;
-            
-            // Auto-generate username
-            const usernameInput = document.getElementById('username');
-            if (usernameInput) {
-                usernameInput.value = name.replace(/[^a-zA-Z0-9]/g, '');
-            }
         };
 
         card.addEventListener('click', selectAvatar);

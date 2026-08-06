@@ -46,8 +46,10 @@ const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Find user by email
-        const user = await User.findOne({ email });
+        // Find user by email or username
+        const user = await User.findOne({ 
+            $or: [{ email: email }, { username: email }] 
+        });
 
         // Check if user exists and passwords match
         if (user && (await bcrypt.compare(password, user.password))) {
