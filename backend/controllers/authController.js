@@ -111,14 +111,32 @@ const updateProfile = async (req, res) => {
 
         if (user) {
             // Update name if provided
-            user.name = req.body.name || user.name;
+            if (req.body.name) {
+                user.name = req.body.name;
+            }
+            
+            // Update username if provided
+            if (req.body.username && req.body.username !== user.username) {
+                const usernameExists = await User.findOne({ username: req.body.username });
+                if (usernameExists) {
+                    return res.status(400).json({ message: 'Username already taken' });
+                }
+                user.username = req.body.username;
+            }
+            
+            // Update avatar if provided
+            if (req.body.avatar) {
+                user.avatar = req.body.avatar;
+            }
             
             const updatedUser = await user.save();
             
             res.json({
                 _id: updatedUser._id,
                 name: updatedUser.name,
+                username: updatedUser.username,
                 email: updatedUser.email,
+                avatar: updatedUser.avatar,
                 message: 'Profile updated'
             });
         } else {

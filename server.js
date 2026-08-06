@@ -24,74 +24,58 @@ const io = new Server(server, {
     }
 });
 
-// Store connected users for real-time messaging
+// Store connected users for real-time messaging (mapping userId to a Set of socket IDs)
 const userSockets = new Map();
+
+const broadcastOnlineUsers = () => {
+    const onlineUserIds = Array.from(userSockets.keys());
+    io.emit('getOnlineUsers', onlineUserIds);
+};
 
 io.on('connection', (socket) => {
     socket.on('register', (userId) => {
         if (userId) {
-            userSockets.set(userId, socket.id);
+            const uid = userId.toString();
+            if (!userSockets.has(uid)) {
+                userSockets.set(uid, new Set());
+            }
+            userSockets.get(uid).add(socket.id);
+            socket.userId = uid;
+            broadcastOnlineUsers();
         }
     });
 
     socket.on('sendMessage', (data) => {
         // data = { receiverId, message }
-        const receiverSocketId = userSockets.get(data.receiverId);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit('newMessage', data.message);
-        }
-    });
-
-    // --- WebRTC Signaling Events ---
-    socket.on('call-user', (data) => {
-        const receiverSocketId = userSockets.get(data.to);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit('call-made', {
-                offer: data.offer,
-                callerId: data.callerId,
-                callerName: data.callerName,
-                isVideo: data.isVideo
+        const receiverSockets = userSockets.get(data.receiverId);
+        if (receiverSockets) {
+            receiverSockets.forEach(socketId => {
+                io.to(socketId).emit('newMessage', data.message);
             });
-        }
-    });
-
-    socket.on('make-answer', (data) => {
-        const callerSocketId = userSockets.get(data.to);
-        if (callerSocketId) {
-            io.to(callerSocketId).emit('answer-made', {
-                answer: data.answer
-            });
-        }
-    });
-
-    socket.on('ice-candidate', (data) => {
-        const receiverSocketId = userSockets.get(data.to);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit('ice-candidate', data.candidate);
-        }
-    });
-
-    socket.on('reject-call', (data) => {
-        const callerSocketId = userSockets.get(data.to);
-        if (callerSocketId) {
-            io.to(callerSocketId).emit('call-rejected');
-        }
-    });
-
-    socket.on('end-call', (data) => {
-        const otherSocketId = userSockets.get(data.to);
-        if (otherSocketId) {
-            io.to(otherSocketId).emit('call-ended');
         }
     });
 
     socket.on('disconnect', () => {
-        for (const [userId, socketId] of userSockets.entries()) {
-            if (socketId === socket.id) {
-                userSockets.delete(userId);
-                break;
+        if (socket.userId) {
+            const sockets = userSockets.get(socket.userId);
+            if (sockets) {
+                sockets.delete(socket.id);
+                if (sockets.size === 0) {
+                    userSockets.delete(socket.userId);
+                }
+            }
+        } else {
+            for (const [userId, sockets] of userSockets.entries()) {
+                if (sockets.has(socket.id)) {
+                    sockets.delete(socket.id);
+                    if (sockets.size === 0) {
+                        userSockets.delete(userId);
+                    }
+                    break;
+                }
             }
         }
+        broadcastOnlineUsers();
     });
 });
 
@@ -110,6 +94,12 @@ app.use(cors({
 
 // Serve static files (CSS, JS, Images) from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Middleware to connect to DB on request if needed
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
 
 // Define API Routes
 // Auth routes for register, login, profile
@@ -138,11 +128,6 @@ app.get('/profile', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'profile.html'));
 });
 
-// Middleware to connect to DB on request if needed
-app.use(async (req, res, next) => {
-    await connectDB();
-    next();
-});
 
 // Start the Server (only when not running in Vercel serverless environment)
 if (!process.env.VERCEL) {

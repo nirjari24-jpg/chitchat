@@ -2,6 +2,7 @@
 .dashboard-layout {
     display: flex;
     height: 100vh;
+    height: 100dvh; /* Better mobile viewport support */
     background-color: var(--bg-color);
     position: relative;
     overflow: hidden;
@@ -61,6 +62,8 @@
 .user-list {
     flex: 1;
     overflow-y: auto;
+    min-height: 0;
+    padding-bottom: 20px;
 }
 
 .user-item {
@@ -203,68 +206,3 @@
     }
 }
 
-/* --- WebRTC Call Modals --- */
-.call-modal {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.call-modal-content {
-    background-color: var(--card-bg);
-    padding: 30px;
-    border-radius: 10px;
-    text-align: center;
-    border: 1px solid var(--border-color);
-    color: white;
-}
-
-.active-call-modal {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-color: #000;
-    display: flex;
-    flex-direction: column;
-    z-index: 999;
-}
-
-.video-container {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    background-color: #111;
-}
-
-#remoteVideo {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-#localVideo {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    width: 150px;
-    height: 100px;
-    background-color: #222;
-    border: 2px solid white;
-    border-radius: 8px;
-    object-fit: cover;
-    z-index: 10;
-}
-
-.call-controls {
-    height: 80px;
-    background-color: #222;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-}

@@ -37,8 +37,14 @@
 
             <form id="profileForm">
                 <div class="form-group">
-                    <label for="profileUsername">Username (Read Only)</label>
-                    <input type="text" id="profileUsername" readonly style="background-color: var(--hover-bg); cursor: not-allowed; color: var(--text-muted);">
+                    <label>Change Marvel Avatar</label>
+                    <div class="avatar-grid" id="avatarGrid">
+                        <!-- Avatars populated by JS -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="profileUsername">Username</label>
+                    <input type="text" id="profileUsername" required>
                 </div>
                 <div class="form-group">
                     <label for="profileName">Real Name</label>
@@ -49,7 +55,7 @@
                     <input type="email" id="profileEmail" readonly style="background-color: var(--hover-bg); cursor: not-allowed; color: var(--text-muted);">
                 </div>
                 
-                <button type="submit" class="btn-primary" style="width: 100%;">Update Real Name</button>
+                <button type="submit" class="btn-primary" style="width: 100%;">Update Profile</button>
             </form>
         </div>
     </div>

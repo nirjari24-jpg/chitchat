@@ -4,11 +4,27 @@ const { protect } = require('../middleware/authMiddleware');
 const {
     getUsers,
     getMessages,
-    sendMessage
+    sendMessage,
+    pingUser,
+    getOnlineUsers,
+    markAsSeen,
+    markAsDelivered
 } = require('../controllers/messageController');
 
 // All message routes require authentication
 router.use(protect);
+
+// Route to ping user's lastActive status
+router.post('/ping', pingUser);
+
+// Route to get online users
+router.get('/online', getOnlineUsers);
+
+// Route to mark messages from a sender as seen
+router.post('/seen/:senderId', markAsSeen);
+
+// Route to mark unread messages as delivered
+router.post('/delivered', markAsDelivered);
 
 // Route to get all users to chat with
 router.get('/users', getUsers);

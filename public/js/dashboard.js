@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Fetch all other users from API
 const fetchUsers = async () => {
     try {
-        const response = await fetch('/api/messages/users');
+        const response = await fetch('/api/messages/users', { cache: 'no-store' });
         
         if (response.status === 401) {
             // Unauthorized, token expired or missing
@@ -43,6 +43,7 @@ const fetchUsers = async () => {
 // Render users in the left sidebar
 const renderUserList = (users) => {
     const userListElement = document.getElementById('userList');
+    if (!userListElement) return;
     userListElement.innerHTML = ''; // Clear current list
 
     if (users.length === 0) {
@@ -50,7 +51,10 @@ const renderUserList = (users) => {
         return;
     }
 
+    const onlineList = window.onlineUserIds || [];
+
     users.forEach(user => {
+        const isOnline = onlineList.includes(user._id.toString());
         const userDiv = document.createElement('div');
         userDiv.className = 'user-item';
         
@@ -60,12 +64,18 @@ const renderUserList = (users) => {
         }
         
         userDiv.innerHTML = `
-            <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; margin-right: 15px; border: 2px solid var(--primary-blue); background-color: var(--card-white);">
-                <img src="/images/avatars/${user.avatar || 'default.png'}" alt="${user.username}" style="width: 100%; height: 100%; object-fit: cover;">
+            <div style="position: relative; width: 40px; height: 40px; margin-right: 12px; flex-shrink: 0;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 2px solid var(--primary-red); background-color: var(--card-bg);">
+                    <img src="/images/avatars/${user.avatar || 'default.png'}" alt="${user.username}" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <span style="position: absolute; bottom: 0; right: 0; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #1a1a1a; background-color: ${isOnline ? '#10B981' : '#6B7280'}; box-shadow: ${isOnline ? '0 0 6px #10B981' : 'none'};"></span>
             </div>
-            <div>
-                <p class="fancy-name" style="margin-bottom: 2px; font-size: 16px;">${user.username || user.name}</p>
-                <p style="font-size: 12px; opacity: 0.8; text-transform: capitalize;">${user.name}</p>
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <p class="fancy-name" style="margin: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;">${user.username || user.name}</p>
+                    <span style="font-size: 10px; font-weight: bold; color: ${isOnline ? '#10B981' : '#6B7280'};">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                </div>
+                <p style="font-size: 11px; opacity: 0.7; margin: 2px 0 0 0; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${user.name}</p>
             </div>
         `;
 
@@ -121,16 +131,34 @@ if (logoutBtn) {
 
 // Mobile Menu Toggle
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const mobileMenuBtnEmpty = document.getElementById('mobileMenuBtnEmpty');
 const sidebar = document.querySelector('.sidebar');
-if (mobileMenuBtn && sidebar) {
-    mobileMenuBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-    });
+
+if (sidebar) {
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+    }
+    
+    if (mobileMenuBtnEmpty) {
+        mobileMenuBtnEmpty.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+    }
     
     // Close sidebar when clicking outside on mobile
     document.querySelector('.chat-area').addEventListener('click', (e) => {
         if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
-            sidebar.classList.remove('open');
+            // Don't close if they clicked the menu buttons
+            if (e.target !== mobileMenuBtn && e.target !== mobileMenuBtnEmpty) {
+                sidebar.classList.remove('open');
+            }
         }
     });
+}
+
+// Check on load if mobile
+if (window.innerWidth <= 768 && !localStorage.getItem('selectedUserId')) {
+    if (sidebar) sidebar.classList.add('open');
 }

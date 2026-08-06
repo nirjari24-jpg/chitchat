@@ -4,6 +4,21 @@ if (!user) {
     window.location.href = '/login';
 }
 
+// Marvel Avatars
+const avatars = [
+    'Iron Man',
+    'Thor',
+    'Spider-Man',
+    'Loki',
+    'Spider-Gwen',
+    'Lady Thor',
+    'Black Widow',
+    'Doctor Strange',
+    'Scarlet Witch',
+    'Groot'
+];
+let selectedAvatar = null;
+
 // Load profile data when page opens
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -26,6 +41,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('profileCharacterDisplay').textContent = `Marvel Character: ${profileData.avatar.replace('.png', '')}`;
         document.getElementById('profileAvatarImg').src = `/images/avatars/${profileData.avatar || 'default.png'}`;
         
+        selectedAvatar = profileData.avatar;
+        
+        // Render Avatar Grid
+        const avatarGrid = document.getElementById('avatarGrid');
+        if (avatarGrid) {
+            avatarGrid.innerHTML = '';
+            avatars.forEach(name => {
+                const filename = name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() + '.png';
+                const card = document.createElement('div');
+                card.className = 'avatar-card';
+                if (filename === selectedAvatar) {
+                    card.classList.add('selected');
+                    const badge = document.createElement('div');
+                    badge.className = 'check-badge';
+                    badge.innerHTML = '✓';
+                    card.appendChild(badge);
+                }
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('role', 'button');
+                const avatarId = filename.replace('.png', '');
+                card.innerHTML += `
+                    <div class="avatar-img-wrapper">
+                        <img src="/images/avatars/${filename}" alt="${name}" title="${name}" loading="lazy" class="avatar-img avatar-${avatarId}">
+                    </div>
+                `;
+                
+                const selectAvatar = () => {
+                    document.querySelectorAll('#avatarGrid .avatar-card').forEach(c => {
+                        c.classList.remove('selected');
+                        const badge = c.querySelector('.check-badge');
+                        if (badge) badge.remove();
+                    });
+                    card.classList.add('selected');
+                    const badge = document.createElement('div');
+                    badge.className = 'check-badge';
+                    badge.innerHTML = '✓';
+                    card.appendChild(badge);
+                    
+                    selectedAvatar = filename;
+                    const usernameInput = document.getElementById('profileUsername');
+                    if (usernameInput) {
+                        usernameInput.value = name.replace(/[^a-zA-Z0-9]/g, '');
+                    }
+                };
+
+                card.addEventListener('click', selectAvatar);
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectAvatar();
+                    }
+                });
+                avatarGrid.appendChild(card);
+            });
+        }
+        
         // Format Date
         if (profileData.createdAt) {
             const dateStr = new Date(profileData.createdAt).toLocaleDateString();
@@ -44,6 +115,7 @@ if (profileForm) {
         e.preventDefault();
 
         const name = document.getElementById('profileName').value;
+        const username = document.getElementById('profileUsername').value;
         const successMsg = document.getElementById('successMsg');
         const errorMsg = document.getElementById('errorMsg');
         
@@ -56,15 +128,21 @@ if (profileForm) {
             const response = await fetch('/api/auth/profile', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
+                body: JSON.stringify({ name, username, avatar: selectedAvatar })
             });
 
             const data = await response.json();
 
             if (response.ok) {
                 // Update user in local storage
-                const updatedUser = { ...user, name: data.name };
+                const updatedUser = { ...user, name: data.name, username: data.username, avatar: data.avatar };
                 localStorage.setItem('user', JSON.stringify(updatedUser));
+                Object.assign(user, updatedUser);
+                
+                // Update header display
+                document.getElementById('profileUsernameDisplay').textContent = data.username;
+                document.getElementById('profileCharacterDisplay').textContent = `Marvel Character: ${data.avatar.replace('.png', '')}`;
+                document.getElementById('profileAvatarImg').src = `/images/avatars/${data.avatar || 'default.png'}`;
                 
                 // Show success message
                 successMsg.textContent = 'Profile updated successfully!';

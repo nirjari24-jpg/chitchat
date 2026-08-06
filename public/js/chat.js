@@ -1,4 +1,31 @@
-// This file works together with dashboard.js to handle chat functionality
+window.onlineUserIds = [];
+
+const updateOnlineStatusUI = () => {
+    const chatOnlineStatus = document.getElementById('chatOnlineStatus');
+    if (chatOnlineStatus && typeof selectedUserId !== 'undefined' && selectedUserId) {
+        const isOnline = (window.onlineUserIds || []).includes(selectedUserId.toString());
+        chatOnlineStatus.style.display = 'flex';
+        chatOnlineStatus.innerHTML = isOnline 
+            ? `<span style="width: 10px; height: 10px; background-color: #10B981; box-shadow: 0 0 8px #10B981; border-radius: 50%; display: inline-block;"></span> <span style="color: #10B981; font-weight: bold; font-size: 13px;">Online</span>`
+            : `<span style="width: 10px; height: 10px; background-color: #6B7280; border-radius: 50%; display: inline-block;"></span> <span style="color: #9CA3AF; font-size: 13px;">Offline</span>`;
+    }
+
+    if (typeof renderUserList === 'function' && typeof allUsers !== 'undefined') {
+        renderUserList(allUsers);
+    }
+};
+
+const fetchOnlineUsers = async () => {
+    try {
+        const res = await fetch('/api/messages/online', { cache: 'no-store' });
+        if (res.ok) {
+            window.onlineUserIds = await res.json();
+            updateOnlineStatusUI();
+        }
+    } catch (e) {
+        console.error('Error fetching online users:', e);
+    }
+};
 
 let socket = null;
 try {
@@ -10,6 +37,12 @@ try {
             if (currentUser) {
                 socket.emit('register', currentUser._id);
             }
+            fetchOnlineUsers();
+        });
+
+        socket.on('getOnlineUsers', (users) => {
+            window.onlineUserIds = users || [];
+            updateOnlineStatusUI();
         });
 
         socket.on('newMessage', (newMsg) => {
@@ -21,6 +54,19 @@ try {
 } catch (err) {
     console.warn('Socket.io not connected (using HTTP polling fallback):', err);
 }
+
+// Poll online users every 5s for fallback / serverless environments
+setInterval(() => {
+    fetchOnlineUsers();
+    // Ping to update our own online status
+    fetch('/api/messages/ping', { method: 'POST' }).catch(e => console.error('Ping failed:', e));
+    // Mark incoming unread messages as delivered
+    fetch('/api/messages/delivered', { method: 'POST' }).catch(e => console.error('Mark delivered failed:', e));
+}, 5000);
+fetchOnlineUsers();
+// Initial ping
+fetch('/api/messages/ping', { method: 'POST' }).catch(e => console.error('Ping failed:', e));
+fetch('/api/messages/delivered', { method: 'POST' }).catch(e => console.error('Mark delivered failed:', e));
 
 // Function called when a user is clicked in the sidebar
 const selectUser = (user) => {
@@ -45,8 +91,10 @@ const selectUser = (user) => {
         avatarImg.style.display = 'block';
     }
     
-    document.getElementById('chatOnlineStatus').style.display = 'flex';
-    document.getElementById('callActionButtons').style.display = 'flex';
+    updateOnlineStatusUI();
+    
+    // Mark messages as seen when opening the chat
+    fetch(`/api/messages/seen/${selectedUserId}`, { method: 'POST' }).catch(e => console.error(e));
     
     // Fetch previous messages for this user
     fetchMessages();
@@ -56,6 +104,8 @@ const selectUser = (user) => {
     window.chatPollingInterval = setInterval(() => {
         if (selectedUserId) {
             fetchMessages(true);
+            // Mark any new messages as seen while chat is open
+            fetch(`/api/messages/seen/${selectedUserId}`, { method: 'POST' }).catch(e => console.error(e));
         }
     }, 3000);
 };
@@ -65,7 +115,7 @@ const fetchMessages = async () => {
     if (!selectedUserId) return;
     
     try {
-        const response = await fetch(`/api/messages/${selectedUserId}`);
+        const response = await fetch(`/api/messages/${selectedUserId}`, { cache: 'no-store' });
         const messages = await response.json();
         
         renderMessages(messages);
@@ -105,6 +155,17 @@ const renderMessages = (messages) => {
         
         const timeString = new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
+        let statusIcon = '';
+        if (isSent) {
+            if (msg.status === 'seen') {
+                statusIcon = '<span style="color: #3b82f6; margin-left: 3px; font-weight: bold; font-size: 11px;">✓✓</span>';
+            } else if (msg.status === 'delivered') {
+                statusIcon = '<span style="color: var(--text-muted); margin-left: 3px; font-weight: bold; font-size: 11px;">✓✓</span>';
+            } else {
+                statusIcon = '<span style="color: var(--text-muted); margin-left: 3px; font-size: 11px;">✓</span>';
+            }
+        }
+        
         msgDiv.innerHTML = `
             <div style="display: flex; gap: 10px; flex-direction: ${isSent ? 'row-reverse' : 'row'}; margin-bottom: 5px; align-items: flex-end;">
                 <div style="width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;">
@@ -119,7 +180,7 @@ const renderMessages = (messages) => {
                         ${msg.message}
                     </div>
                     <div style="font-size: 9px; margin-top: 4px; text-align: ${isSent ? 'right' : 'left'}; color: var(--text-muted);">
-                        ${timeString} ${isSent ? '<span style="color: var(--primary-red); margin-left: 3px;">✓</span>' : ''}
+                        ${timeString} ${statusIcon}
                     </div>
                 </div>
             </div>
@@ -158,6 +219,17 @@ const appendMessage = (msg) => {
     
     const timeString = new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
+    let statusIcon = '';
+    if (isSent) {
+        if (msg.status === 'seen') {
+            statusIcon = '<span style="color: #3b82f6; margin-left: 3px; font-weight: bold; font-size: 11px;">✓✓</span>';
+        } else if (msg.status === 'delivered') {
+            statusIcon = '<span style="color: var(--text-muted); margin-left: 3px; font-weight: bold; font-size: 11px;">✓✓</span>';
+        } else {
+            statusIcon = '<span style="color: var(--text-muted); margin-left: 3px; font-size: 11px;">✓</span>';
+        }
+    }
+    
     msgDiv.innerHTML = `
         <div style="display: flex; gap: 10px; flex-direction: ${isSent ? 'row-reverse' : 'row'}; margin-bottom: 5px; align-items: flex-end;">
             <div style="width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;">
@@ -172,7 +244,7 @@ const appendMessage = (msg) => {
                     ${msg.message}
                 </div>
                 <div style="font-size: 9px; margin-top: 4px; text-align: ${isSent ? 'right' : 'left'}; color: var(--text-muted);">
-                    ${timeString} ${isSent ? '<span style="color: var(--primary-red); margin-left: 3px;">✓</span>' : ''}
+                    ${timeString} ${statusIcon}
                 </div>
             </div>
         </div>
@@ -236,3 +308,33 @@ if (messageInput) {
         }
     });
 }
+
+// Initialize Emoji Picker
+document.addEventListener('DOMContentLoaded', () => {
+    const emojiBtn = document.getElementById('emojiBtn');
+    const msgInput = document.getElementById('messageInput');
+    const picker = document.getElementById('emojiPicker');
+    
+    if (emojiBtn && picker && msgInput) {
+        // Toggle picker visibility when button is clicked
+        emojiBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        // Append emoji to input when selected
+        picker.addEventListener('emoji-click', event => {
+            msgInput.value += event.detail.unicode;
+            msgInput.focus();
+            // Optional: hide picker after selecting
+            // picker.style.display = 'none';
+        });
+        
+        // Hide picker when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!emojiBtn.contains(e.target) && !picker.contains(e.target)) {
+                picker.style.display = 'none';
+            }
+        });
+    }
+});

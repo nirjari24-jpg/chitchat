@@ -36,7 +36,10 @@
         <div class="chat-area">
             
             <!-- Default Empty State -->
-            <div id="chatEmptyState" class="chat-empty-state">
+            <div id="chatEmptyState" class="chat-empty-state" style="position: relative;">
+                <div style="position: absolute; top: 15px; left: 15px;">
+                    <button id="mobileMenuBtnEmpty" class="mobile-menu-btn" style="display: none; color: var(--primary-red); padding: 5px 10px; background: rgba(0,0,0,0.5); border-radius: 5px; font-size: 18px;">☰ Users</button>
+                </div>
                 <p>Select a user to start chatting</p>
             </div>
 
@@ -60,22 +63,25 @@
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- Messages Container -->
                 <div id="messagesContainer" class="messages-container">
-                    <!-- Messages will be populated here via JavaScript -->
+                    <!-- Messages will be loaded here dynamically -->
                 </div>
-                
-                <div class="chat-input-area">
-                    <input type="text" id="messageInput" class="chat-input" placeholder="Type a message...">
+
+                <!-- Message Input Area -->
+                <div class="chat-input-area" style="display: flex; gap: 10px; align-items: center; position: relative;">
+                    <emoji-picker id="emojiPicker" class="dark" style="display: none; position: absolute; bottom: 100%; left: 0; z-index: 100; margin-bottom: 10px;"></emoji-picker>
+                    <button id="emojiBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 0 5px;" title="Add Emoji">😀</button>
+                    <input type="text" id="messageInput" class="chat-input" placeholder="Type a message..." style="flex-grow: 1;">
                     <button id="sendBtn" class="btn-primary">Send</button>
                 </div>
-                
             </div>
-        </div>
         
     </div>
 
     <!-- Link to JavaScript logic -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.22.8/index.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/chat.js"></script>
