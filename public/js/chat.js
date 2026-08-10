@@ -100,7 +100,7 @@ const selectUser = (user) => {
     // Fetch previous messages for this user
     fetchMessages();
 
-    // Start auto-polling every 3 seconds for continuous updates on Vercel / serverless
+    // Start auto-polling every 1 second for continuous updates on Vercel / serverless
     if (window.chatPollingInterval) clearInterval(window.chatPollingInterval);
     window.chatPollingInterval = setInterval(() => {
         if (selectedUserId) {
@@ -108,9 +108,9 @@ const selectUser = (user) => {
             // Mark any new messages as seen while chat is open
             fetch(`/api/messages/seen/${selectedUserId}`, { method: 'POST' }).catch(e => console.error(e));
         }
-    }, 3000);
+    }, 1000);
 
-    // Start auto-polling for typing status every 2.5 seconds
+    // Start auto-polling for typing status every 1 second
     if (window.typingPollingInterval) clearInterval(window.typingPollingInterval);
     window.typingPollingInterval = setInterval(async () => {
         if (!selectedUserId) return;
@@ -136,7 +136,7 @@ const selectUser = (user) => {
         } catch (e) {
             console.error('Error fetching typing status:', e);
         }
-    }, 2500);
+    }, 1000);
 };
 
 // Fetch messages for the selected user from API
@@ -197,7 +197,12 @@ const renderMessages = (messages) => {
         
         let contentHtml = '';
         if (msg.imageUrl) {
-            contentHtml += `<img src="${msg.imageUrl}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px; display: block;">`;
+            contentHtml += `
+                <div style="position: relative; display: inline-block;">
+                    <img src="${msg.imageUrl}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px; display: block;">
+                    <a href="${msg.imageUrl}" download="ChitChat_Image.jpg" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px;" title="Save Image">⬇️</a>
+                </div>
+            `;
         }
         if (msg.message && msg.message !== '[Image]') {
             contentHtml += `<div>${msg.message}</div>`;
@@ -269,7 +274,12 @@ const appendMessage = (msg) => {
     
     let contentHtml = '';
     if (msg.imageUrl) {
-        contentHtml += `<img src="${msg.imageUrl}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px; display: block;">`;
+        contentHtml += `
+            <div style="position: relative; display: inline-block;">
+                <img src="${msg.imageUrl}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px; display: block;">
+                <a href="${msg.imageUrl}" download="ChitChat_Image.jpg" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px;" title="Save Image">⬇️</a>
+            </div>
+        `;
     }
     if (msg.message && msg.message !== '[Image]') {
         contentHtml += `<div>${msg.message}</div>`;
@@ -446,10 +456,10 @@ if (messageInput) {
             // Send typing ping
             fetch(`/api/messages/typing/${selectedUserId}`, { method: 'POST' }).catch(console.error);
             
-            // Prevent spamming the endpoint - wait 2 seconds before sending another ping
+            // Prevent spamming the endpoint - wait 1 second before sending another ping
             typingTimeout = setTimeout(() => {
                 typingTimeout = null;
-            }, 2000);
+            }, 1000);
         }
     });
 }
