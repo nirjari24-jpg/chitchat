@@ -493,3 +493,73 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ----------------------------------------------------
+// Handle Camera / Take Photo feature
+// ----------------------------------------------------
+const cameraBtn = document.getElementById('cameraBtn');
+const cameraModal = document.getElementById('cameraModal');
+const cameraVideo = document.getElementById('cameraVideo');
+const captureBtn = document.getElementById('captureBtn');
+const closeCameraBtn = document.getElementById('closeCameraBtn');
+let cameraStream = null;
+
+const stopCamera = () => {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    if (cameraModal) {
+        cameraModal.style.display = 'none';
+    }
+};
+
+if (cameraBtn) {
+    cameraBtn.addEventListener('click', async () => {
+        if (!selectedUserId) return alert("Select a user to chat with first!");
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            cameraVideo.srcObject = cameraStream;
+            cameraModal.style.display = 'flex';
+        } catch (err) {
+            alert('Could not access camera: ' + err.message);
+        }
+    });
+}
+
+if (closeCameraBtn) {
+    closeCameraBtn.addEventListener('click', stopCamera);
+}
+
+if (captureBtn) {
+    captureBtn.addEventListener('click', () => {
+        if (!cameraVideo.videoWidth) return;
+        
+        const canvas = document.createElement('canvas');
+        let width = cameraVideo.videoWidth;
+        let height = cameraVideo.videoHeight;
+        
+        const MAX_SIZE = 800;
+        if (width > height && width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        // Handle mirroring if using a front-facing camera
+        ctx.translate(width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(cameraVideo, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        sendImage(compressedBase64);
+        
+        stopCamera();
+    });
+}
