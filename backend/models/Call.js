@@ -43,4 +43,4 @@ const callSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Call', callSchema);
+module.exports = mongoose.models.Call || mongoose.model('Call', callSchema);

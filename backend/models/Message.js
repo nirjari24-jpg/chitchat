@@ -38,4 +38,4 @@ const messageSchema = new mongoose.Schema({
 });
 
 // Export the Message model
-module.exports = mongoose.model('Message', messageSchema);
+module.exports = mongoose.models.Message || mongoose.model('Message', messageSchema);
