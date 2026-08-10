@@ -61,6 +61,8 @@
                         <div id="chatOnlineStatus" style="display: none; align-items: center; gap: 5px; font-size: 14px;">
                             <span style="width: 8px; height: 8px; background-color: var(--primary-red); box-shadow: 0 0 5px var(--primary-red); border-radius: 50%; display: inline-block;"></span> Online
                         </div>
+                        <button id="videoCallBtn" class="call-btn" title="Video Call">🎥</button>
+                        <button id="voiceCallBtn" class="call-btn" title="Voice Call">📞</button>
                     </div>
                 </div>
 
@@ -80,10 +82,36 @@
         
     </div>
 
+    <!-- Incoming Call Modal -->
+    <div id="incomingCallModal" class="call-modal" style="display: none;">
+        <div class="call-modal-content">
+            <h3 id="incomingCallName">Incoming Call...</h3>
+            <p id="incomingCallType">Video Call</p>
+            <div class="call-actions">
+                <button id="acceptCallBtn" class="btn-success">Answer</button>
+                <button id="rejectCallBtn" class="btn-danger">Decline</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Call Overlay -->
+    <div id="activeCallOverlay" class="call-overlay" style="display: none;">
+        <div class="video-container">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <video id="localVideo" autoplay playsinline muted></video>
+        </div>
+        <div class="call-controls">
+            <button id="toggleAudioBtn" class="control-btn" title="Mute/Unmute">🎤</button>
+            <button id="toggleVideoBtn" class="control-btn" title="Enable/Disable Video">📹</button>
+            <button id="endCallBtn" class="control-btn btn-danger" title="End Call">End</button>
+        </div>
+    </div>
+
     <!-- Link to JavaScript logic -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.22.8/index.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/chat.js"></script>
+    <script src="/js/webrtc.js"></script>
 </body>
 </html>

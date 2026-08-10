@@ -55,6 +55,70 @@ io.on('connection', (socket) => {
         }
     });
 
+    // WebRTC Signaling Events
+    socket.on('callUser', (data) => {
+        const receiverSockets = userSockets.get(data.userToCall);
+        if (receiverSockets) {
+            receiverSockets.forEach(socketId => {
+                io.to(socketId).emit('callUser', { signal: data.signalData, from: data.from, name: data.name, isVideo: data.isVideo });
+            });
+        }
+    });
+
+    socket.on('answerCall', (data) => {
+        const callerSockets = userSockets.get(data.to);
+        if (callerSockets) {
+            callerSockets.forEach(socketId => {
+                io.to(socketId).emit('callAccepted', data.signal);
+            });
+        }
+    });
+
+    socket.on('rejectCall', (data) => {
+        const callerSockets = userSockets.get(data.to);
+        if (callerSockets) {
+            callerSockets.forEach(socketId => {
+                io.to(socketId).emit('callRejected');
+            });
+        }
+    });
+
+    socket.on('endCall', (data) => {
+        const peerSockets = userSockets.get(data.to);
+        if (peerSockets) {
+            peerSockets.forEach(socketId => {
+                io.to(socketId).emit('callEnded');
+            });
+        }
+    });
+
+    socket.on('webrtc_offer', (data) => {
+        const receiverSockets = userSockets.get(data.to);
+        if (receiverSockets) {
+            receiverSockets.forEach(socketId => {
+                io.to(socketId).emit('webrtc_offer', { sdp: data.sdp, from: data.from, isVideo: data.isVideo });
+            });
+        }
+    });
+
+    socket.on('webrtc_answer', (data) => {
+        const callerSockets = userSockets.get(data.to);
+        if (callerSockets) {
+            callerSockets.forEach(socketId => {
+                io.to(socketId).emit('webrtc_answer', { sdp: data.sdp });
+            });
+        }
+    });
+
+    socket.on('webrtc_ice_candidate', (data) => {
+        const peerSockets = userSockets.get(data.to);
+        if (peerSockets) {
+            peerSockets.forEach(socketId => {
+                io.to(socketId).emit('webrtc_ice_candidate', { candidate: data.candidate });
+            });
+        }
+    });
+
     socket.on('disconnect', () => {
         if (socket.userId) {
             const sockets = userSockets.get(socket.userId);

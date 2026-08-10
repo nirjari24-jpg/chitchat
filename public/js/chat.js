@@ -27,10 +27,11 @@ const fetchOnlineUsers = async () => {
     }
 };
 
-let socket = null;
+window.socket = null;
 try {
     if (typeof io === 'function') {
-        socket = io({ transports: ['websocket', 'polling'] });
+        window.socket = io({ transports: ['websocket', 'polling'] });
+        const socket = window.socket; // keep local ref for rest of chat.js
         
         socket.on('connect', () => {
             const currentUser = JSON.parse(localStorage.getItem('user'));
