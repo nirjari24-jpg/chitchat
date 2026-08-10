@@ -6,7 +6,7 @@ const Call = require('../models/Call');
 const initiateCall = async (req, res) => {
     try {
         const { receiverId, isVideo, callerName } = req.body;
-        const callerId = req.user._id;
+        const callerId = req.user.id;
 
         // Create new call
         const call = await Call.create({
@@ -28,7 +28,7 @@ const initiateCall = async (req, res) => {
 // @access  Private
 const getIncomingCall = async (req, res) => {
     try {
-        const receiverId = req.user._id;
+        const receiverId = req.user.id;
 
         // Find any 'ringing' call for this user
         const call = await Call.findOne({
@@ -97,7 +97,7 @@ const saveSignalData = async (req, res) => {
 const addIceCandidate = async (req, res) => {
     try {
         const { candidate } = req.body;
-        const from = req.user._id;
+        const from = req.user.id;
 
         const call = await Call.findByIdAndUpdate(
             req.params.id,
