@@ -8,7 +8,9 @@ const {
     pingUser,
     getOnlineUsers,
     markAsSeen,
-    markAsDelivered
+    markAsDelivered,
+    setTypingStatus,
+    getTypingStatus
 } = require('../controllers/messageController');
 
 // All message routes require authentication

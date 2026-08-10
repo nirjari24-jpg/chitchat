@@ -109,6 +109,34 @@ const selectUser = (user) => {
             fetch(`/api/messages/seen/${selectedUserId}`, { method: 'POST' }).catch(e => console.error(e));
         }
     }, 3000);
+
+    // Start auto-polling for typing status every 2.5 seconds
+    if (window.typingPollingInterval) clearInterval(window.typingPollingInterval);
+    window.typingPollingInterval = setInterval(async () => {
+        if (!selectedUserId) return;
+        try {
+            const res = await fetch(`/api/messages/typing-status/${selectedUserId}`, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                const indicator = document.getElementById('typingIndicator');
+                const nameSpan = document.getElementById('typingUserName');
+                if (data.isTyping) {
+                    const activeUser = allUsers.find(u => u._id === selectedUserId);
+                    nameSpan.textContent = activeUser ? activeUser.name : 'User';
+                    indicator.style.display = 'block';
+                    // Optional: Scroll to bottom
+                    const container = document.getElementById('messagesContainer');
+                    if (container.scrollHeight - container.scrollTop <= container.clientHeight + 50) {
+                        setTimeout(() => container.scrollTop = container.scrollHeight, 50);
+                    }
+                } else {
+                    indicator.style.display = 'none';
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching typing status:', e);
+        }
+    }, 2500);
 };
 
 // Fetch messages for the selected user from API
@@ -167,6 +195,14 @@ const renderMessages = (messages) => {
             }
         }
         
+        let contentHtml = '';
+        if (msg.imageUrl) {
+            contentHtml += `<img src="${msg.imageUrl}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px; display: block;">`;
+        }
+        if (msg.message && msg.message !== '[Image]') {
+            contentHtml += `<div>${msg.message}</div>`;
+        }
+        
         msgDiv.innerHTML = `
             <div style="display: flex; gap: 10px; flex-direction: ${isSent ? 'row-reverse' : 'row'}; margin-bottom: 5px; align-items: flex-end;">
                 <div style="width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;">
@@ -178,7 +214,7 @@ const renderMessages = (messages) => {
                         <span>(${msgUser.name})</span>
                     </div>
                     <div style="padding: 10px 14px; border-radius: 16px; background: ${isSent ? 'linear-gradient(135deg, var(--primary-red), var(--dark-red))' : 'var(--card-bg)'}; color: white; border: ${isSent ? 'none' : '1px solid var(--border-color)'}; border-bottom-${isSent ? 'right' : 'left'}-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                        ${msg.message}
+                        ${contentHtml}
                     </div>
                     <div style="font-size: 9px; margin-top: 4px; text-align: ${isSent ? 'right' : 'left'}; color: var(--text-muted);">
                         ${timeString} ${statusIcon}
@@ -231,6 +267,14 @@ const appendMessage = (msg) => {
         }
     }
     
+    let contentHtml = '';
+    if (msg.imageUrl) {
+        contentHtml += `<img src="${msg.imageUrl}" style="max-width: 100%; border-radius: 8px; margin-bottom: 5px; display: block;">`;
+    }
+    if (msg.message && msg.message !== '[Image]') {
+        contentHtml += `<div>${msg.message}</div>`;
+    }
+
     msgDiv.innerHTML = `
         <div style="display: flex; gap: 10px; flex-direction: ${isSent ? 'row-reverse' : 'row'}; margin-bottom: 5px; align-items: flex-end;">
             <div style="width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;">
@@ -242,7 +286,7 @@ const appendMessage = (msg) => {
                     <span>(${msgUser.name})</span>
                 </div>
                 <div style="padding: 10px 14px; border-radius: 16px; background: ${isSent ? 'linear-gradient(135deg, var(--primary-red), var(--dark-red))' : 'var(--card-bg)'}; color: white; border: ${isSent ? 'none' : '1px solid var(--border-color)'}; border-bottom-${isSent ? 'right' : 'left'}-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                    ${msg.message}
+                    ${contentHtml}
                 </div>
                 <div style="font-size: 9px; margin-top: 4px; text-align: ${isSent ? 'right' : 'left'}; color: var(--text-muted);">
                     ${timeString} ${statusIcon}
@@ -294,6 +338,89 @@ const sendMessage = async () => {
     }
 };
 
+// Send an Image message
+const sendImage = async (base64String) => {
+    if (!selectedUserId) return;
+    
+    try {
+        const response = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                receiverId: selectedUserId,
+                messageText: '',
+                imageUrl: base64String
+            })
+        });
+        
+        if (response.ok) {
+            const savedMessage = await response.json();
+            
+            // Emit to server if socket is active
+            if (socket && typeof socket.emit === 'function') {
+                socket.emit('sendMessage', {
+                    receiverId: selectedUserId,
+                    message: savedMessage
+                });
+            }
+            
+            // Append to our own chat UI immediately
+            appendMessage(savedMessage);
+        }
+    } catch (error) {
+        console.error('Error sending image:', error);
+    }
+};
+
+// Handle Image Button Click & Compression
+const imageBtn = document.getElementById('imageBtn');
+const imageInput = document.getElementById('imageInput');
+
+if (imageBtn && imageInput) {
+    imageBtn.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    imageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const MAX_SIZE = 800;
+
+                // Resize while maintaining aspect ratio
+                if (width > height && width > MAX_SIZE) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                } else if (height > MAX_SIZE) {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Compress as JPEG
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                sendImage(compressedBase64);
+                
+                // Clear the input so the same file can be selected again
+                imageInput.value = '';
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 // Handle Send Button Click
 const sendBtn = document.getElementById('sendBtn');
 if (sendBtn) {
@@ -302,10 +429,27 @@ if (sendBtn) {
 
 // Handle Enter Key in Message Input box
 const messageInput = document.getElementById('messageInput');
+let typingTimeout = null;
+
 if (messageInput) {
     messageInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             sendMessage();
+        }
+    });
+
+    // Typing indicator event
+    messageInput.addEventListener('input', () => {
+        if (!selectedUserId) return;
+        
+        if (!typingTimeout) {
+            // Send typing ping
+            fetch(`/api/messages/typing/${selectedUserId}`, { method: 'POST' }).catch(console.error);
+            
+            // Prevent spamming the endpoint - wait 2 seconds before sending another ping
+            typingTimeout = setTimeout(() => {
+                typingTimeout = null;
+            }, 2000);
         }
     });
 }

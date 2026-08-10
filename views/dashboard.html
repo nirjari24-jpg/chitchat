@@ -71,10 +71,20 @@
                     <!-- Messages will be loaded here dynamically -->
                 </div>
 
+                <!-- Typing Indicator -->
+                <div id="typingIndicator" style="display: none; padding: 5px 15px; font-size: 12px; color: var(--text-muted); font-style: italic;">
+                    <span id="typingUserName">User</span> is typing...
+                </div>
+
                 <!-- Message Input Area -->
                 <div class="chat-input-area" style="display: flex; gap: 10px; align-items: center; position: relative;">
                     <emoji-picker id="emojiPicker" class="dark" style="display: none; position: absolute; bottom: 100%; left: 0; z-index: 100; margin-bottom: 10px;"></emoji-picker>
                     <button id="emojiBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 0 5px;" title="Add Emoji">😀</button>
+                    
+                    <!-- File Attachment Input -->
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    <button id="imageBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0 5px;" title="Attach Image">📎</button>
+
                     <input type="text" id="messageInput" class="chat-input" placeholder="Type a message..." style="flex-grow: 1;">
                     <button id="sendBtn" class="btn-primary">Send</button>
                 </div>
