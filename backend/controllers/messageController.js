@@ -47,11 +47,11 @@ const getMessages = async (req, res) => {
 // Send a new message
 const sendMessage = async (req, res) => {
     try {
-        const { receiverId, messageText } = req.body;
+        const { receiverId, messageText, imageUrl } = req.body;
         const senderId = req.user.id;
 
-        if (!receiverId || !messageText) {
-            return res.status(400).json({ message: 'Receiver and message text are required' });
+        if (!receiverId || (!messageText && !imageUrl)) {
+            return res.status(400).json({ message: 'Receiver and message text or image are required' });
         }
 
         // Check if receiver is online to set initial status
@@ -68,7 +68,8 @@ const sendMessage = async (req, res) => {
         const newMessage = await Message.create({
             sender: senderId,
             receiver: receiverId,
-            message: messageText,
+            message: messageText || '[Image]', // Fallback for encryption logic if empty
+            imageUrl: imageUrl || null,
             status: status
         });
 
@@ -83,6 +84,42 @@ const pingUser = async (req, res) => {
     try {
         await User.findByIdAndUpdate(req.user.id, { lastActive: new Date() });
         res.status(200).json({ success: true });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Set typing status
+const setTypingStatus = async (req, res) => {
+    try {
+        const { receiverId } = req.params;
+        await User.findByIdAndUpdate(req.user.id, { 
+            typingTo: receiverId,
+            typingAt: new Date()
+        });
+        res.status(200).json({ success: true });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Get typing status of a specific user
+const getTypingStatus = async (req, res) => {
+    try {
+        const { senderId } = req.params;
+        const currentUserId = req.user.id;
+
+        const sender = await User.findById(senderId);
+        let isTyping = false;
+        
+        if (sender && sender.typingTo && sender.typingTo.toString() === currentUserId) {
+            const cutoffTime = new Date(Date.now() - 5000); // 5 seconds
+            if (sender.typingAt >= cutoffTime) {
+                isTyping = true;
+            }
+        }
+
+        res.status(200).json({ isTyping });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -138,6 +175,8 @@ module.exports = {
     getMessages,
     sendMessage,
     pingUser,
+    setTypingStatus,
+    getTypingStatus,
     getOnlineUsers,
     markAsSeen,
     markAsDelivered

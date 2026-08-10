@@ -22,6 +22,9 @@ const messageSchema = new mongoose.Schema({
         set: encryptMessage,
         get: decryptMessage
     },
+    imageUrl: {
+        type: String
+    },
     createdAt: {
         type: Date,
         default: Date.now

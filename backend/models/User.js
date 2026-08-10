@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     avatar: { type: String, required: true },
     lastActive: { type: Date, default: Date.now },
+    typingTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    typingAt: { type: Date },
     createdAt: { type: Date, default: Date.now }
 });
 

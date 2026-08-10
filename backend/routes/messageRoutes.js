@@ -20,6 +20,12 @@ router.post('/ping', pingUser);
 // Route to get online users
 router.get('/online', getOnlineUsers);
 
+// Route to set typing status to a receiver
+router.post('/typing/:receiverId', setTypingStatus);
+
+// Route to get typing status of a sender
+router.get('/typing-status/:senderId', getTypingStatus);
+
 // Route to mark messages from a sender as seen
 router.post('/seen/:senderId', markAsSeen);
 
