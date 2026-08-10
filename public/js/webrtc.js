@@ -1,12 +1,23 @@
 // webrtc.js
-// Handles WebRTC video and voice calls
+// Handles WebRTC video and voice calls via MongoDB polling
 
 let localStream;
 let remoteStream;
 let peerConnection;
 let isCaller = false;
 let currentCallUser = null;
+let currentCallId = null;
 let isVideoCall = true;
+
+// Polling intervals
+let incomingCallInterval = null;
+let syncInterval = null;
+
+// Track processed ICE candidates to avoid duplicate additions
+let processedIceCandidatesCount = 0;
+// Track if we have already handled offer/answer to avoid duplicate processing
+let hasProcessedOffer = false;
+let hasProcessedAnswer = false;
 
 const servers = {
     iceServers: [
@@ -32,88 +43,115 @@ const remoteVideo = document.getElementById('remoteVideo');
 // Get current user from localStorage
 const getCurrentUser = () => JSON.parse(localStorage.getItem('user'));
 
-// Initialize Socket Listeners for WebRTC (wait a moment for socket to be ready)
-setTimeout(() => {
-    if (window.socket) {
-        window.socket.on('callUser', async (data) => {
-            // data = { signal, from, name, isVideo }
-            if (activeCallOverlay.style.display === 'flex') {
-                // Already in a call, reject automatically
-                window.socket.emit('rejectCall', { to: data.from });
-                return;
-            }
-            
-            currentCallUser = data.from;
-            isVideoCall = data.isVideo;
-            incomingCallName.textContent = `Call from ${data.name}`;
-            incomingCallType.textContent = isVideoCall ? 'Video Call' : 'Voice Call';
-            incomingCallModal.style.display = 'flex';
-        });
+// Start polling for incoming calls
+const startIncomingCallPolling = () => {
+    if (incomingCallInterval) clearInterval(incomingCallInterval);
+    incomingCallInterval = setInterval(async () => {
+        // Don't poll if we are already in a call
+        if (currentCallId || activeCallOverlay.style.display === 'flex' || incomingCallModal.style.display === 'flex') {
+            return;
+        }
 
-        window.socket.on('callAccepted', async () => {
-            // Callee accepted, create Peer Connection and Offer
-            createPeerConnection();
-            
-            try {
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                window.socket.emit('webrtc_offer', { 
-                    to: currentCallUser, 
-                    sdp: peerConnection.localDescription,
-                    from: getCurrentUser()._id,
-                    isVideo: isVideoCall
-                });
-            } catch (err) {
-                console.error("Error creating offer:", err);
-            }
-        });
-
-        window.socket.on('callRejected', () => {
-            alert('Call was declined.');
-            cleanupCall();
-        });
-
-        window.socket.on('callEnded', () => {
-            cleanupCall();
-        });
-
-        window.socket.on('webrtc_offer', async (data) => {
-            // Receive offer from Caller
-            if (!peerConnection) {
-                createPeerConnection();
-            }
-            try {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                window.socket.emit('webrtc_answer', {
-                    to: currentCallUser,
-                    sdp: peerConnection.localDescription
-                });
-            } catch (err) {
-                console.error("Error handling offer:", err);
-            }
-        });
-
-        window.socket.on('webrtc_answer', async (data) => {
-            try {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            } catch (err) {
-                console.error("Error handling answer:", err);
-            }
-        });
-
-        window.socket.on('webrtc_ice_candidate', async (data) => {
-            try {
-                if (peerConnection) {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        try {
+            const res = await fetch('/api/calls/incoming');
+            if (res.ok) {
+                const call = await res.json();
+                if (call && call._id) {
+                    currentCallId = call._id;
+                    currentCallUser = call.callerId;
+                    isVideoCall = call.isVideo;
+                    
+                    incomingCallName.textContent = `Call from ${call.callerName || 'Unknown'}`;
+                    incomingCallType.textContent = isVideoCall ? 'Video Call' : 'Voice Call';
+                    incomingCallModal.style.display = 'flex';
                 }
-            } catch (err) {
-                console.error("Error adding ICE candidate:", err);
             }
-        });
-    }
-}, 1000);
+        } catch (error) {
+            console.error("Error polling incoming calls:", error);
+        }
+    }, 3000); // Check every 3 seconds
+};
+
+// Start the incoming polling immediately
+startIncomingCallPolling();
+
+const startSyncPolling = () => {
+    if (syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(async () => {
+        if (!currentCallId) return;
+
+        try {
+            const res = await fetch(`/api/calls/${currentCallId}/sync`);
+            if (res.ok) {
+                const call = await res.json();
+                
+                // If the call was rejected or ended
+                if (call.status === 'rejected') {
+                    if (isCaller) alert('Call was declined.');
+                    cleanupCall();
+                    return;
+                }
+                if (call.status === 'ended') {
+                    cleanupCall();
+                    return;
+                }
+
+                // If Caller sees call is accepted, create and send offer
+                if (isCaller && call.status === 'accepted' && !hasProcessedOffer) {
+                    hasProcessedOffer = true;
+                    createPeerConnection();
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    
+                    await fetch(`/api/calls/${currentCallId}/signal`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'offer', sdp: peerConnection.localDescription })
+                    });
+                }
+
+                // If Callee sees an offer, set it, create and send answer
+                if (!isCaller && call.offer && !hasProcessedOffer) {
+                    hasProcessedOffer = true;
+                    if (!peerConnection) createPeerConnection();
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(call.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    
+                    await fetch(`/api/calls/${currentCallId}/signal`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'answer', sdp: peerConnection.localDescription })
+                    });
+                }
+
+                // If Caller sees an answer, set it
+                if (isCaller && call.answer && !hasProcessedAnswer) {
+                    hasProcessedAnswer = true;
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(call.answer));
+                }
+
+                // Process new ICE candidates
+                if (call.iceCandidates && call.iceCandidates.length > processedIceCandidatesCount) {
+                    const currentUser = getCurrentUser();
+                    for (let i = processedIceCandidatesCount; i < call.iceCandidates.length; i++) {
+                        const candidateData = call.iceCandidates[i];
+                        // Only add candidates from the OTHER person
+                        if (candidateData.from !== currentUser._id) {
+                            if (peerConnection) {
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData.candidate));
+                            }
+                        }
+                    }
+                    processedIceCandidatesCount = call.iceCandidates.length;
+                }
+            }
+        } catch (error) {
+            console.error("Error syncing call:", error);
+        }
+    }, 2000); // Check every 2 seconds for signals
+};
 
 // Initialize Media
 const initMedia = async (video = true) => {
@@ -121,7 +159,6 @@ const initMedia = async (video = true) => {
         localStream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
         localVideo.srcObject = localStream;
         if (!video) {
-            // Hide local video element for voice calls
             localVideo.style.display = 'none';
         } else {
             localVideo.style.display = 'block';
@@ -141,30 +178,27 @@ const createPeerConnection = () => {
     remoteStream = new MediaStream();
     remoteVideo.srcObject = remoteStream;
     if (!isVideoCall) {
-        // Hide remote video if voice call, or replace with avatar
-        remoteVideo.style.opacity = '0'; // keep the element for audio
+        remoteVideo.style.opacity = '0';
     } else {
         remoteVideo.style.opacity = '1';
     }
 
-    // Add local tracks to peer connection
     localStream.getTracks().forEach((track) => {
         peerConnection.addTrack(track, localStream);
     });
 
-    // Listen for remote tracks
     peerConnection.ontrack = (event) => {
         event.streams[0].getTracks().forEach((track) => {
             remoteStream.addTrack(track);
         });
     };
 
-    // Listen for ICE candidates and send them
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            window.socket.emit('webrtc_ice_candidate', {
-                to: currentCallUser,
-                candidate: event.candidate
+    peerConnection.onicecandidate = async (event) => {
+        if (event.candidate && currentCallId) {
+            await fetch(`/api/calls/${currentCallId}/ice`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ candidate: event.candidate })
             });
         }
     };
@@ -186,12 +220,30 @@ const startCall = async (video) => {
 
     activeCallOverlay.style.display = 'flex';
 
-    window.socket.emit('callUser', {
-        userToCall: currentCallUser,
-        from: currentUser._id,
-        name: currentUser.name || currentUser.username,
-        isVideo: video
-    });
+    // Initiate call on server
+    try {
+        const res = await fetch('/api/calls/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                receiverId: currentCallUser,
+                isVideo: video,
+                callerName: currentUser.name || currentUser.username
+            })
+        });
+        
+        if (res.ok) {
+            const call = await res.json();
+            currentCallId = call._id;
+            startSyncPolling();
+        } else {
+            alert('Failed to initiate call.');
+            cleanupCall();
+        }
+    } catch (error) {
+        console.error("Error starting call:", error);
+        cleanupCall();
+    }
 };
 
 // Event Listeners for Call Buttons
@@ -210,26 +262,47 @@ if (acceptCallBtn) {
         
         const mediaSuccess = await initMedia(isVideoCall);
         if (!mediaSuccess) {
-            window.socket.emit('rejectCall', { to: currentCallUser });
+            await fetch(`/api/calls/${currentCallId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'rejected' })
+            });
             cleanupCall();
             return;
         }
 
-        window.socket.emit('answerCall', { to: currentCallUser });
+        // Accept the call
+        await fetch(`/api/calls/${currentCallId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'accepted' })
+        });
+        
+        startSyncPolling();
     });
 }
 
 // Reject Call
 if (rejectCallBtn) {
-    rejectCallBtn.addEventListener('click', () => {
+    rejectCallBtn.addEventListener('click', async () => {
         incomingCallModal.style.display = 'none';
-        window.socket.emit('rejectCall', { to: currentCallUser });
+        if (currentCallId) {
+            await fetch(`/api/calls/${currentCallId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'rejected' })
+            });
+        }
         cleanupCall();
     });
 }
 
 // End Call
 const cleanupCall = () => {
+    if (syncInterval) {
+        clearInterval(syncInterval);
+        syncInterval = null;
+    }
     if (peerConnection) {
         peerConnection.close();
         peerConnection = null;
@@ -241,13 +314,21 @@ const cleanupCall = () => {
     activeCallOverlay.style.display = 'none';
     incomingCallModal.style.display = 'none';
     currentCallUser = null;
+    currentCallId = null;
     isCaller = false;
+    processedIceCandidatesCount = 0;
+    hasProcessedOffer = false;
+    hasProcessedAnswer = false;
 };
 
 if (endCallBtn) {
-    endCallBtn.addEventListener('click', () => {
-        if (currentCallUser) {
-            window.socket.emit('endCall', { to: currentCallUser });
+    endCallBtn.addEventListener('click', async () => {
+        if (currentCallId) {
+            await fetch(`/api/calls/${currentCallId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'ended' })
+            });
         }
         cleanupCall();
     });
